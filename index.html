@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posturize - Balance Your Posture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --stand-color: #00FFC2;
+            --sit-color: #7050FF;
+            --warning-color: #FF4B4B;
+            --text-main: #ffffff;
+            --text-sub: #888888;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 1s ease;
+        }
+
+        body.warning-mode {
+            background-color: #1a0505; /* 경고 시 아주 어두운 붉은 배경 */
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            height: 80px;
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -1px;
+            font-style: italic;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .rec-indicator {
+            color: var(--warning-color);
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: none; /* 시작 전엔 숨김 */
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .cam-toggle {
+            background: #333;
+            border: 1px solid #444;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .cam-toggle:hover {
+            background: #444;
+        }
+
+        .cam-toggle.active {
+            background: var(--stand-color);
+            color: black;
+            font-weight: bold;
+        }
+
+        .cam-toggle.paused {
+            background: #f1c40f; /* Yellow for pause */
+            color: black;
+            font-weight: bold;
+            animation: none; /* Stop blinking if any */
+        }
+
+        /* --- Main (The Orb & Cam) --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 카메라 컨테이너 */
+        #webcam-container {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            overflow: hidden;
+            opacity: 0; /* 기본 숨김 */
+            transform: scale(0.8);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid rgba(255,255,255,0.1);
+            z-index: 10;
+        }
+
+        #webcam-container.visible {
+            opacity: 1;
+            transform: scale(1);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        #webcam-container canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* The Orb Visualizer */
+        .orb {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: #333;
+            transition: all 0.8s ease;
+            box-shadow: 0 0 50px rgba(255,255,255,0.05);
+            z-index: 5;
+            position: absolute; /* 카메라 뒤/앞 위치 조정용 */
+        }
+
+        /* Stand State Animation */
+        .orb.state-stand {
+            background: var(--stand-color);
+            box-shadow: 0 0 60px var(--stand-color);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Sit State Animation */
+        .orb.state-sit {
+            background: var(--sit-color);
+            box-shadow: 0 0 40px var(--sit-color);
+            border-radius: 40% 40% 60% 60%; /* 납작해짐 */
+            transform: scaleY(0.6) translateY(50px);
+        }
+
+        /* Warning State */
+        .orb.state-warning {
+            background: var(--warning-color) !important;
+            box-shadow: 0 0 80px var(--warning-color) !important;
+            animation: pulse-warning 0.5s infinite alternate !important;
+            border-radius: 50% !important;
+            transform: scale(1.2) !important;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+        }
+
+        @keyframes pulse-warning {
+            from { opacity: 0.8; transform: scale(1.1); }
+            to { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Start Button overlay */
+        #start-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: white;
+            color: black;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 200;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        #start-btn:hover { transform: scale(1.05); }
+
+
+        /* --- Footer (Stats & Balance Bar) --- */
+        .stats-container {
+            width: 80%;
+            max-width: 800px;
+            margin: 0 auto 50px auto;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .balance-bar-wrapper {
+            display: flex;
+            height: 44px;
+            border-radius: 22px;
+            background: #222;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bar-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            transition: width 0.3s linear, background-color 0.5s ease;
+            white-space: nowrap;
+            font-weight: 700;
+            font-size: 0.9rem;
+            overflow: hidden;
+        }
+
+        .stand-bar {
+            background-color: var(--stand-color);
+            color: #121212;
+            justify-content: flex-start;
+            width: 50%; /* 초기값 */
+        }
+
+        .sit-bar {
+            background-color: var(--sit-color);
+            color: #fff;
+            justify-content: flex-end;
+            width: 50%; /* 초기값 */
+        }
+
+        /* Warning Mode for Bar */
+        .sit-bar.warning {
+            background-color: var(--warning-color);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        /* Continuous Sit Progress Overlay */
+        .sit-progress {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0; /* Fill from right to left */
+            background-color: rgba(255, 75, 75, 0.4); /* Warning color with opacity */
+            width: 0%;
+            transition: width 1s linear;
+            z-index: 1; /* Behind text but above background */
+        }
+
+        /* Fix for compressed stand bar visibility */
+        .stand-bar {
+            overflow: visible; /* Allow text to spill out */
+            position: relative;
+            z-index: 20; /* Higher than sit-bar */
+            /* min-width removed to preserve ratio accuracy */
+        }
+
+        /* If stand bar is compressed (implied by warning mode usually), ensure text is readable */
+        .stand-bar span {
+            white-space: nowrap;
+            /* Add outline/shadow so it is readable on Purple/Red if it spills over */
+            text-shadow: 
+                -1px -1px 0 #fff,  
+                 1px -1px 0 #fff,
+                -1px  1px 0 #fff,
+                 1px  1px 0 #fff;
+            /* Since the text color is #121212, a white stroke keeps it readable on dark colors */
+        }
+        
+        /* Sit bar text should stay inside or clip? Right align usually keeps it safe until very end */
+        .sit-bar {
+            z-index: 15;
+            position: relative;
+        }
+        
+        /* Ensure text stays on top of the progress bar */
+        .sit-bar span {
+            position: relative;
+            z-index: 10;
+        }
+
+        .total-time {
+            text-align: center;
+            margin-top: 15px;
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+        }
+
+        .status-text {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            height: 1.5rem;
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Time to Stand up</div>
+        <div class="controls">
+            <div id="rec-indicator" class="rec-indicator">● REC</div>
+            <button id="pause-toggle" class="cam-toggle" onclick="togglePause()">PAUSE</button>
+            <button id="cam-toggle" class="cam-toggle" onclick="toggleCamera()">CAM OFF</button>
+        </div>
+    </header>
+
+    <main>
+        <button id="start-btn" onclick="init()">START TRACKING</button>
+        
+        <div id="orb" class="orb"></div>
+        
+        <div id="webcam-container"><canvas id="canvas"></canvas></div>
+    </main>
+
+    <div class="stats-container">
+        <div id="status-text" class="status-text">Ready</div>
+        
+        <div style="position: relative;">
+            <div class="balance-bar-wrapper">
+                <div id="stand-bar" class="bar-segment stand-bar">
+                    <span id="stand-label">STAND 00:00</span>
+                </div>
+                
+                <div id="sit-bar" class="bar-segment sit-bar">
+                    <div id="sit-progress" class="sit-progress"></div>
+                    <span id="sit-label">SIT 00:00 (00:00)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="total-time">
+            TOTAL TIME <span id="total-timer">00:00:00</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+
+    <script type="text/javascript">
+        // 모델 URL (Teachable Machine에서 발급받은 URL)
+        const URL = "https://teachablemachine.withgoogle.com/models/cqXV5MEON/";
+
+        let model, webcam, ctx, maxPredictions;
+        let isRunning = false;
+        let isCamVisible = false;
+        let isPaused = false;
+
+        // 시간 추적 변수 (밀리초 단위)
+        let totalTimeMs = 0;
+        let standTimeMs = 0;
+        let sitTimeMs = 0;
+        let continuousSitTimeMs = 0; // 연속 앉은 시간
+        let lastFrameTime = 0;
+        
+        const WARNING_THRESHOLD_MS = 30 * 60 * 1000; // 30분
+
+        // DOM 요소
+        const orb = document.getElementById('orb');
+        const standBar = document.getElementById('stand-bar');
+        const sitBar = document.getElementById('sit-bar');
+        const standLabel = document.getElementById('stand-label');
+        const sitLabel = document.getElementById('sit-label');
+        const sitProgress = document.getElementById('sit-progress');
+        const totalTimer = document.getElementById('total-timer');
+        const statusText = document.getElementById('status-text');
+        const webcamContainer = document.getElementById('webcam-container');
+        const startBtn = document.getElementById('start-btn');
+        const recIndicator = document.getElementById('rec-indicator');
+        const pauseBtn = document.getElementById('pause-toggle');
+
+        async function init() {
+            startBtn.style.display = 'none'; // 버튼 숨김
+            statusText.innerText = "Loading Model...";
+
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // 모델 로드
+            model = await tmPose.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // 웹캠 설정
+            const size = 200;
+            const flip = true; 
+            webcam = new tmPose.Webcam(size, size, flip);
+            await webcam.setup();
+            await webcam.play();
+            
+            // 캔버스 설정
+            const canvas = document.getElementById("canvas");
+            canvas.width = size; canvas.height = size;
+            ctx = canvas.getContext("2d");
+
+            // 루프 시작 준비
+            isRunning = true;
+            recIndicator.style.display = 'block';
+            lastFrameTime = performance.now();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function loop(timestamp) {
+            webcam.update();
+            
+            // 시간 차이(Delta Time) 계산
+            const dt = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            if (isRunning) {
+                await predict(dt);
+            }
+            
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict(dt) {
+            // 1. 포즈 추정 및 예측 (항상 실행 - 일시정지여도 카메라 화면은 갱신)
+            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+            
+            // 5. 웹캠 그리기 (필요시에만)
+            if (isCamVisible) {
+                drawPose(pose);
+            }
+
+            // 일시정지 상태면 시간 측정 및 상태 업데이트 중단
+            if (isPaused) {
+                statusText.innerText = "PAUSED";
+                statusText.style.color = "#f1c40f"; // Yellow
+                return; 
+            }
+
+            const prediction = await model.predict(posenetOutput);
+
+            // 2. 가장 높은 확률의 클래스 찾기
+            let highestProb = 0;
+            let currentClass = "neutral";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestProb) {
+                    highestProb = prediction[i].probability;
+                    currentClass = prediction[i].className;
+                }
+            }
+
+            // 3. 시간 누적 및 상태 업데이트
+            const classNameLower = currentClass.toLowerCase();
+
+            if (classNameLower.includes("stand")) {
+                standTimeMs += dt;
+                continuousSitTimeMs = 0; // 서있으면 앉은 시간 초기화
+                updateOrb("stand");
+                statusText.innerText = "Standing...";
+                statusText.style.color = "var(--stand-color)";
+            } else if (classNameLower.includes("sit")) {
+                sitTimeMs += dt;
+                continuousSitTimeMs += dt; // 앉은 시간 누적
+                updateOrb("sit");
+                statusText.innerText = "SITTING...";
+                statusText.style.color = "var(--sit-color)";
+            } else {
+                // 인식 안됨 혹은 기타 (자리를 비운 경우 등)
+                // 연속 앉은 시간은 초기화 (앉아있지 않으므로)
+                continuousSitTimeMs = 0;
+                
+                statusText.innerText = "No Pose Detected";
+                statusText.style.color = "#888";
+                updateOrb("neutral");
+            }
+
+            totalTimeMs += dt;
+
+            // 4. UI 렌더링 (바, 타이머)
+            updateUI();
+        }
+
+        function togglePause() {
+            if (!isRunning) return; // 시작 전에는 반응 없음
+
+            isPaused = !isPaused;
+            
+            if (isPaused) {
+                pauseBtn.innerText = "RESUME";
+                pauseBtn.classList.add('paused');
+                recIndicator.innerText = "|| PAUSED";
+                recIndicator.style.animation = "none";
+                recIndicator.style.color = "#888";
+            } else {
+                pauseBtn.innerText = "PAUSE";
+                pauseBtn.classList.remove('paused');
+                recIndicator.innerText = "● REC";
+                recIndicator.style.animation = "blink 1s infinite";
+                recIndicator.style.color = "var(--warning-color)";
+            }
+        }
+
+        function updateUI() {
+            // 타이머 텍스트 업데이트
+            // 연속 앉은 시간 표시 추가
+            standLabel.innerText = `STAND ${formatTime(standTimeMs)}`;
+            sitLabel.innerText = `SIT ${formatTime(sitTimeMs)} (${formatTime(continuousSitTimeMs)})`;
+            totalTimer.innerText = formatTime(totalTimeMs);
+
+            // 바 너비 계산 (전체 시간 중 비율)
+            // 0으로 나누기 방지
+            const safeTotal = totalTimeMs > 0 ? totalTimeMs : 1; 
+            const standPercent = (standTimeMs / safeTotal) * 100;
+            const sitPercent = (sitTimeMs / safeTotal) * 100;
+
+            // 최소 너비 보장 (글씨가 보이게)
+            let visualStand = standPercent;
+            let visualSit = sitPercent;
+
+            // 초기 상태(0초)일 때는 50:50으로 보여줌
+            if (totalTimeMs < 1000) {
+                visualStand = 50;
+                visualSit = 50;
+            }
+
+            standBar.style.width = `${visualStand}%`;
+            sitBar.style.width = `${visualSit}%`;
+
+            // 연속 앉은 시간 게이지 (30분 기준 % 채우기)
+            const continuousPercent = Math.min((continuousSitTimeMs / WARNING_THRESHOLD_MS) * 100, 100);
+            sitProgress.style.width = `${continuousPercent}%`;
+
+            // 경고 로직 (연속 30분 이상 앉아있을 때)
+            const isWarning = continuousSitTimeMs >= WARNING_THRESHOLD_MS;
+
+            if (isWarning) {
+                sitBar.classList.add('warning');
+                document.body.classList.add('warning-mode');
+                orb.className = "orb state-warning"; // Orb도 경고 모드
+                statusText.innerText = "MOVE YOUR BODY!";
+                statusText.style.color = "var(--warning-color)";
+            } else {
+                sitBar.classList.remove('warning');
+                document.body.classList.remove('warning-mode');
+                // Orb 클래스는 updateOrb()에서 처리하므로 여기서 복구 안 해도 됨
+            }
+        }
+
+        function updateOrb(state) {
+            // 경고 상태가 아닐 때만 일반 상태 적용
+            if (document.body.classList.contains('warning-mode')) return;
+
+            orb.className = "orb"; // 초기화
+            if (state === "stand") orb.classList.add("state-stand");
+            if (state === "sit") orb.classList.add("state-sit");
+        }
+
+        function toggleCamera() {
+            isCamVisible = !isCamVisible;
+            const btn = document.getElementById('cam-toggle');
+            
+            if (isCamVisible) {
+                webcamContainer.classList.add('visible');
+                btn.classList.add('active');
+                btn.innerText = "CAM ON";
+            } else {
+                webcamContainer.classList.remove('visible');
+                btn.classList.remove('active');
+                btn.innerText = "CAM OFF";
+            }
+        }
+
+        function drawPose(pose) {
+            if (webcam.canvas) {
+                ctx.drawImage(webcam.canvas, 0, 0);
+                if (pose) {
+                    const minPartConfidence = 0.5;
+                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+                }
+            }
+        }
+
+        // 밀리초 -> HH:MM:SS 포맷팅
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            
+            // 시:분:초 (시가 0이면 분:초만 표시할 수도 있으나, 여기선 시까지 고정)
+            const pad = (n) => n.toString().padStart(2, '0');
+            if (h > 0) {
+                return `${pad(h)}:${pad(m)}:${pad(s)}`;
+            } else {
+                return `${pad(m)}:${pad(s)}`;
+            }
+        }
+    </script>
+</body>
+</html>
