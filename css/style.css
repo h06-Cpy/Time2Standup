@@ -78,6 +78,24 @@ nav {
     color: var(--primary-color);
 }
 
+.lang-btn {
+    background: transparent;
+    border: 1px solid #444;
+    color: var(--text-sub);
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-family: var(--font-main);
+}
+
+.lang-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 .btn-cta {
     background-color: var(--primary-color);
     color: #000;
