@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posturize - Balance Your Posture</title>
+    <title>Time 2 Stand up</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -52,7 +52,7 @@
         .controls {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .rec-indicator {
@@ -61,6 +61,7 @@
             font-weight: bold;
             display: none; /* 시작 전엔 숨김 */
             animation: blink 1s infinite;
+            margin-right: 10px;
         }
 
         @keyframes blink { 50% { opacity: 0; } }
@@ -69,11 +70,13 @@
             background: #333;
             border: 1px solid #444;
             color: white;
-            padding: 5px 15px;
+            padding: 6px 16px;
             border-radius: 20px;
             cursor: pointer;
             font-size: 0.8rem;
+            font-weight: 600;
             transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
         }
 
         .cam-toggle:hover {
@@ -228,6 +231,18 @@
             color: #121212;
             justify-content: flex-start;
             width: 50%; /* 초기값 */
+            overflow: visible;
+            position: relative;
+            z-index: 20;
+        }
+
+        .stand-bar span {
+            white-space: nowrap;
+            text-shadow: 
+                -1px -1px 0 #fff,  
+                 1px -1px 0 #fff,
+                -1px  1px 0 #fff,
+                 1px  1px 0 #fff;
         }
 
         .sit-bar {
@@ -235,53 +250,26 @@
             color: #fff;
             justify-content: flex-end;
             width: 50%; /* 초기값 */
+            z-index: 15;
+            position: relative;
         }
 
-        /* Warning Mode for Bar */
         .sit-bar.warning {
             background-color: var(--warning-color);
             box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
         }
 
-        /* Continuous Sit Progress Overlay */
         .sit-progress {
             position: absolute;
             top: 0;
             bottom: 0;
-            right: 0; /* Fill from right to left */
-            background-color: rgba(255, 75, 75, 0.4); /* Warning color with opacity */
+            right: 0;
+            background-color: rgba(255, 75, 75, 0.4);
             width: 0%;
             transition: width 1s linear;
-            z-index: 1; /* Behind text but above background */
+            z-index: 1;
         }
 
-        /* Fix for compressed stand bar visibility */
-        .stand-bar {
-            overflow: visible; /* Allow text to spill out */
-            position: relative;
-            z-index: 20; /* Higher than sit-bar */
-            /* min-width removed to preserve ratio accuracy */
-        }
-
-        /* If stand bar is compressed (implied by warning mode usually), ensure text is readable */
-        .stand-bar span {
-            white-space: nowrap;
-            /* Add outline/shadow so it is readable on Purple/Red if it spills over */
-            text-shadow: 
-                -1px -1px 0 #fff,  
-                 1px -1px 0 #fff,
-                -1px  1px 0 #fff,
-                 1px  1px 0 #fff;
-            /* Since the text color is #121212, a white stroke keeps it readable on dark colors */
-        }
-        
-        /* Sit bar text should stay inside or clip? Right align usually keeps it safe until very end */
-        .sit-bar {
-            z-index: 15;
-            position: relative;
-        }
-        
-        /* Ensure text stays on top of the progress bar */
         .sit-bar span {
             position: relative;
             z-index: 10;
@@ -303,6 +291,76 @@
             height: 1.5rem;
             color: var(--text-main);
         }
+
+        /* --- Modal (Intro/About) --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 300; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.8); 
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #1e1e1e;
+            margin: auto;
+            padding: 40px;
+            border: 1px solid #444;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+            color: #eee;
+            position: relative;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            color: var(--stand-color);
+        }
+
+        .about-text {
+            line-height: 1.6;
+            font-size: 1rem;
+            margin-bottom: 30px;
+        }
+
+        .about-text strong {
+            color: white;
+        }
+        
+        .about-section {
+            margin-bottom: 15px;
+        }
+
+        .close-btn {
+            background: var(--text-main);
+            color: black;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            float: right;
+            transition: transform 0.2s;
+        }
+        .close-btn:hover { transform: scale(1.05); }
+
     </style>
 </head>
 <body>
@@ -311,6 +369,8 @@
         <div class="logo">Time to Stand up</div>
         <div class="controls">
             <div id="rec-indicator" class="rec-indicator">● REC</div>
+            <button id="about-btn" class="cam-toggle" onclick="toggleAbout()">ABOUT</button>
+            <button id="lang-toggle" class="cam-toggle" onclick="toggleLanguage()">EN</button>
             <button id="pause-toggle" class="cam-toggle" onclick="togglePause()">PAUSE</button>
             <button id="cam-toggle" class="cam-toggle" onclick="toggleCamera()">CAM OFF</button>
         </div>
@@ -341,7 +401,18 @@
         </div>
 
         <div class="total-time">
-            TOTAL TIME <span id="total-timer">00:00:00</span>
+            <span id="total-label">TOTAL TIME</span> <span id="total-timer">00:00:00</span>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="about-title">About Time2Standup</h2>
+            <div id="about-body" class="about-text">
+                <!-- Content will be injected by JS -->
+            </div>
+            <button id="modal-close-btn" class="close-btn" onclick="toggleAbout()">CLOSE</button>
         </div>
     </div>
 
@@ -349,6 +420,90 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 
     <script type="text/javascript">
+        // --- Internationalization (i18n) ---
+        const translations = {
+            en: {
+                title: "Time to Stand up",
+                camOn: "CAM ON",
+                camOff: "CAM OFF",
+                pause: "PAUSE",
+                resume: "RESUME",
+                rec: "● REC",
+                recPaused: "|| PAUSED",
+                start: "START TRACKING",
+                ready: "Ready",
+                loading: "Loading Model...",
+                standing: "Standing...",
+                sitting: "SITTING...",
+                move: "MOVE YOUR BODY!",
+                noPose: "No Pose Detected",
+                standLabel: "STAND",
+                sitLabel: "SIT",
+                totalLabel: "TOTAL TIME",
+                aboutBtn: "ABOUT",
+                aboutTitle: "About Time2Standup",
+                closeBtn: "CLOSE",
+                aboutContent: `
+                    <div class="about-section">
+                        <strong>The Tug of War</strong><br>
+                        Visualize your posture as a game where Good Habits (Standing/Mint) push out Bad Habits (Sitting/Lavender).
+                    </div>
+                    <div class="about-section">
+                        <strong>The Orb & Balance</strong><br>
+                        The floating Orb reflects your current state. The bottom bar shows the balance of your time.
+                    </div>
+                    <div class="about-section">
+                        <strong>Warning System</strong><br>
+                        If you sit continuously for more than 30 minutes, the screen will turn red to warn you. Stand up to reset it!
+                    </div>
+                    <div class="about-section" style="font-size: 0.8rem; color: #888;">
+                        * All camera processing is done locally on your device for privacy.
+                    </div>
+                `
+            },
+            ko: {
+                title: "Time to Stand up",
+                camOn: "카메라 켜기",
+                camOff: "카메라 끄기",
+                pause: "일시정지",
+                resume: "다시 시작",
+                rec: "● 녹화 중",
+                recPaused: "|| 일시정지",
+                start: "측정 시작",
+                ready: "준비 완료",
+                loading: "모델 로딩 중...",
+                standing: "서있는 중...",
+                sitting: "앉아있는 중...",
+                move: "몸을 움직이세요!",
+                noPose: "자세 감지 안됨",
+                standLabel: "서기",
+                sitLabel: "앉기",
+                totalLabel: "총 시간",
+                aboutBtn: "소개",
+                aboutTitle: "Time2Standup 소개",
+                closeBtn: "닫기",
+                aboutContent: `
+                    <div class="about-section">
+                        <strong>자세 줄다리기</strong><br>
+                        여러분의 자세 데이터를 게임처럼 시각화합니다. 좋은 습관(서기/민트색)으로 나쁜 습관(앉기/라벤더색)을 밀어내세요!
+                    </div>
+                    <div class="about-section">
+                        <strong>오브(Orb)와 밸런스</strong><br>
+                        화면 중앙의 오브는 현재 상태를 보여줍니다. 하단의 바는 전체 시간의 균형을 나타냅니다.
+                    </div>
+                    <div class="about-section">
+                        <strong>경고 시스템</strong><br>
+                        30분 이상 연속으로 앉아있으면 화면이 붉게 변하며 경고합니다. 일어나서 스트레칭을 하세요!
+                    </div>
+                    <div class="about-section" style="font-size: 0.8rem; color: #888;">
+                        * 모든 카메라 처리는 기기 내부에서 안전하게 이루어집니다.
+                    </div>
+                `
+            }
+        };
+
+        let currentLang = 'ko'; // Default to Korean as requested
+
         // 모델 URL (Teachable Machine에서 발급받은 URL)
         const URL = "https://teachablemachine.withgoogle.com/models/cqXV5MEON/";
 
@@ -356,6 +511,7 @@
         let isRunning = false;
         let isCamVisible = false;
         let isPaused = false;
+        let isModalOpen = false;
 
         // 시간 추적 변수 (밀리초 단위)
         let totalTimeMs = 0;
@@ -363,6 +519,7 @@
         let sitTimeMs = 0;
         let continuousSitTimeMs = 0; // 연속 앉은 시간
         let lastFrameTime = 0;
+        let lastState = "neutral"; // 상태 추적용
         
         const WARNING_THRESHOLD_MS = 30 * 60 * 1000; // 30분
 
@@ -374,15 +531,26 @@
         const sitLabel = document.getElementById('sit-label');
         const sitProgress = document.getElementById('sit-progress');
         const totalTimer = document.getElementById('total-timer');
+        const totalLabel = document.getElementById('total-label');
         const statusText = document.getElementById('status-text');
         const webcamContainer = document.getElementById('webcam-container');
         const startBtn = document.getElementById('start-btn');
         const recIndicator = document.getElementById('rec-indicator');
         const pauseBtn = document.getElementById('pause-toggle');
+        const camBtn = document.getElementById('cam-toggle');
+        const aboutBtn = document.getElementById('about-btn');
+        const langBtn = document.getElementById('lang-toggle');
+        const aboutModal = document.getElementById('about-modal');
+        const aboutTitle = document.getElementById('about-title');
+        const aboutBody = document.getElementById('about-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // 초기 언어 설정
+        setLanguage(currentLang);
 
         async function init() {
             startBtn.style.display = 'none'; // 버튼 숨김
-            statusText.innerText = "Loading Model...";
+            statusText.innerText = translations[currentLang].loading;
 
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
@@ -435,7 +603,7 @@
 
             // 일시정지 상태면 시간 측정 및 상태 업데이트 중단
             if (isPaused) {
-                statusText.innerText = "PAUSED";
+                statusText.innerText = translations[currentLang].recPaused;
                 statusText.style.color = "#f1c40f"; // Yellow
                 return; 
             }
@@ -460,22 +628,17 @@
                 standTimeMs += dt;
                 continuousSitTimeMs = 0; // 서있으면 앉은 시간 초기화
                 updateOrb("stand");
-                statusText.innerText = "Standing...";
-                statusText.style.color = "var(--stand-color)";
+                lastState = "stand";
             } else if (classNameLower.includes("sit")) {
                 sitTimeMs += dt;
                 continuousSitTimeMs += dt; // 앉은 시간 누적
                 updateOrb("sit");
-                statusText.innerText = "SITTING...";
-                statusText.style.color = "var(--sit-color)";
+                lastState = "sit";
             } else {
-                // 인식 안됨 혹은 기타 (자리를 비운 경우 등)
-                // 연속 앉은 시간은 초기화 (앉아있지 않으므로)
+                // 인식 안됨 혹은 기타
                 continuousSitTimeMs = 0;
-                
-                statusText.innerText = "No Pose Detected";
-                statusText.style.color = "#888";
                 updateOrb("neutral");
+                lastState = "neutral";
             }
 
             totalTimeMs += dt;
@@ -484,44 +647,49 @@
             updateUI();
         }
 
-        function togglePause() {
-            if (!isRunning) return; // 시작 전에는 반응 없음
-
-            isPaused = !isPaused;
-            
-            if (isPaused) {
-                pauseBtn.innerText = "RESUME";
-                pauseBtn.classList.add('paused');
-                recIndicator.innerText = "|| PAUSED";
-                recIndicator.style.animation = "none";
-                recIndicator.style.color = "#888";
-            } else {
-                pauseBtn.innerText = "PAUSE";
-                pauseBtn.classList.remove('paused');
-                recIndicator.innerText = "● REC";
-                recIndicator.style.animation = "blink 1s infinite";
-                recIndicator.style.color = "var(--warning-color)";
-            }
-        }
-
         function updateUI() {
-            // 타이머 텍스트 업데이트
-            // 연속 앉은 시간 표시 추가
-            standLabel.innerText = `STAND ${formatTime(standTimeMs)}`;
-            sitLabel.innerText = `SIT ${formatTime(sitTimeMs)} (${formatTime(continuousSitTimeMs)})`;
-            totalTimer.innerText = formatTime(totalTimeMs);
+            const T = translations[currentLang];
 
-            // 바 너비 계산 (전체 시간 중 비율)
-            // 0으로 나누기 방지
+            // 1. Status Text Update
+            // 경고 상태인지 먼저 확인
+            const isWarning = continuousSitTimeMs >= WARNING_THRESHOLD_MS;
+
+            if (isWarning) {
+                statusText.innerText = T.move;
+                statusText.style.color = "var(--warning-color)";
+                sitBar.classList.add('warning');
+                document.body.classList.add('warning-mode');
+                orb.className = "orb state-warning"; 
+            } else {
+                sitBar.classList.remove('warning');
+                document.body.classList.remove('warning-mode');
+                // 상태별 텍스트
+                if (lastState === "stand") {
+                    statusText.innerText = T.standing;
+                    statusText.style.color = "var(--stand-color)";
+                } else if (lastState === "sit") {
+                    statusText.innerText = T.sitting;
+                    statusText.style.color = "var(--sit-color)";
+                } else {
+                    statusText.innerText = T.noPose;
+                    statusText.style.color = "#888";
+                }
+            }
+
+            // 2. Bars & Timer
+            standLabel.innerText = `${T.standLabel} ${formatTime(standTimeMs)}`;
+            sitLabel.innerText = `${T.sitLabel} ${formatTime(sitTimeMs)} (${formatTime(continuousSitTimeMs)})`;
+            totalTimer.innerText = formatTime(totalTimeMs);
+            totalLabel.innerText = T.totalLabel;
+
+            // 바 너비 계산
             const safeTotal = totalTimeMs > 0 ? totalTimeMs : 1; 
             const standPercent = (standTimeMs / safeTotal) * 100;
             const sitPercent = (sitTimeMs / safeTotal) * 100;
 
-            // 최소 너비 보장 (글씨가 보이게)
             let visualStand = standPercent;
             let visualSit = sitPercent;
 
-            // 초기 상태(0초)일 때는 50:50으로 보여줌
             if (totalTimeMs < 1000) {
                 visualStand = 50;
                 visualSit = 50;
@@ -530,28 +698,75 @@
             standBar.style.width = `${visualStand}%`;
             sitBar.style.width = `${visualSit}%`;
 
-            // 연속 앉은 시간 게이지 (30분 기준 % 채우기)
             const continuousPercent = Math.min((continuousSitTimeMs / WARNING_THRESHOLD_MS) * 100, 100);
             sitProgress.style.width = `${continuousPercent}%`;
+        }
 
-            // 경고 로직 (연속 30분 이상 앉아있을 때)
-            const isWarning = continuousSitTimeMs >= WARNING_THRESHOLD_MS;
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ko' : 'en';
+            setLanguage(currentLang);
+        }
 
-            if (isWarning) {
-                sitBar.classList.add('warning');
-                document.body.classList.add('warning-mode');
-                orb.className = "orb state-warning"; // Orb도 경고 모드
-                statusText.innerText = "MOVE YOUR BODY!";
-                statusText.style.color = "var(--warning-color)";
+        function setLanguage(lang) {
+            const T = translations[lang];
+            
+            // Static elements
+            document.title = T.title;
+            aboutBtn.innerText = T.aboutBtn;
+            langBtn.innerText = lang.toUpperCase();
+            
+            // Logic-dependent buttons
+            if (isPaused) {
+                pauseBtn.innerText = T.resume;
+                recIndicator.innerText = T.recPaused;
             } else {
-                sitBar.classList.remove('warning');
-                document.body.classList.remove('warning-mode');
-                // Orb 클래스는 updateOrb()에서 처리하므로 여기서 복구 안 해도 됨
+                pauseBtn.innerText = T.pause;
+                recIndicator.innerText = T.rec;
+            }
+
+            if (isCamVisible) {
+                camBtn.innerText = T.camOn;
+            } else {
+                camBtn.innerText = T.camOff;
+            }
+
+            startBtn.innerText = T.start;
+            
+            // Modal
+            aboutTitle.innerText = T.aboutTitle;
+            aboutBody.innerHTML = T.aboutContent;
+            modalCloseBtn.innerText = T.closeBtn;
+
+            // Update UI if running to refresh status text immediately
+            if (!isRunning) {
+                statusText.innerText = T.ready;
+            } else {
+                updateUI();
+            }
+        }
+
+        function togglePause() {
+            if (!isRunning) return;
+
+            isPaused = !isPaused;
+            const T = translations[currentLang];
+            
+            if (isPaused) {
+                pauseBtn.innerText = T.resume;
+                pauseBtn.classList.add('paused');
+                recIndicator.innerText = T.recPaused;
+                recIndicator.style.animation = "none";
+                recIndicator.style.color = "#888";
+            } else {
+                pauseBtn.innerText = T.pause;
+                pauseBtn.classList.remove('paused');
+                recIndicator.innerText = T.rec;
+                recIndicator.style.animation = "blink 1s infinite";
+                recIndicator.style.color = "var(--warning-color)";
             }
         }
 
         function updateOrb(state) {
-            // 경고 상태가 아닐 때만 일반 상태 적용
             if (document.body.classList.contains('warning-mode')) return;
 
             orb.className = "orb"; // 초기화
@@ -562,15 +777,26 @@
         function toggleCamera() {
             isCamVisible = !isCamVisible;
             const btn = document.getElementById('cam-toggle');
+            const T = translations[currentLang];
             
             if (isCamVisible) {
                 webcamContainer.classList.add('visible');
                 btn.classList.add('active');
-                btn.innerText = "CAM ON";
+                btn.innerText = T.camOn;
             } else {
                 webcamContainer.classList.remove('visible');
                 btn.classList.remove('active');
-                btn.innerText = "CAM OFF";
+                btn.innerText = T.camOff;
+            }
+        }
+        
+        function toggleAbout() {
+            const modal = document.getElementById('about-modal');
+            isModalOpen = !isModalOpen;
+            if (isModalOpen) {
+                modal.classList.add('show');
+            } else {
+                modal.classList.remove('show');
             }
         }
 
@@ -592,7 +818,6 @@
             const m = Math.floor((totalSeconds % 3600) / 60);
             const s = totalSeconds % 60;
             
-            // 시:분:초 (시가 0이면 분:초만 표시할 수도 있으나, 여기선 시까지 고정)
             const pad = (n) => n.toString().padStart(2, '0');
             if (h > 0) {
                 return `${pad(h)}:${pad(m)}:${pad(s)}`;
