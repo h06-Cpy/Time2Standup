@@ -3,829 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Time to Stand Up - 웹캠 기반 실시간 자세 교정 및 건강 관리 도구. 앉아있는 시간을 줄이고 건강한 습관을 만드세요.">
+    <meta name="keywords" content="자세 교정, 스탠딩 데스크, 거북목 방지, 건강 관리, 뽀모도로, 웹캠 AI">
     <meta name="google-adsense-account" content="ca-pub-3842634914915921">
-    <title>Time 2 Stand up</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #121212;
-            --stand-color: #00FFC2;
-            --sit-color: #7050FF;
-            --warning-color: #FF4B4B;
-            --text-main: #ffffff;
-            --text-sub: #888888;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transition: background-color 1s ease;
-        }
-
-        body.warning-mode {
-            background-color: #1a0505; /* 경고 시 아주 어두운 붉은 배경 */
-        }
-
-        /* --- Header --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 40px;
-            height: 80px;
-            z-index: 100;
-        }
-
-        .logo {
-            font-weight: 800;
-            font-size: 1.5rem;
-            letter-spacing: -1px;
-            font-style: italic;
-        }
-
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .rec-indicator {
-            color: var(--warning-color);
-            font-size: 0.8rem;
-            font-weight: bold;
-            display: none; /* 시작 전엔 숨김 */
-            animation: blink 1s infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes blink { 50% { opacity: 0; } }
-
-        .cam-toggle {
-            background: #333;
-            border: 1px solid #444;
-            color: white;
-            padding: 6px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .cam-toggle:hover {
-            background: #444;
-        }
-
-        .cam-toggle.active {
-            background: var(--stand-color);
-            color: black;
-            font-weight: bold;
-        }
-
-        .cam-toggle.paused {
-            background: #f1c40f; /* Yellow for pause */
-            color: black;
-            font-weight: bold;
-            animation: none; /* Stop blinking if any */
-        }
-
-        /* --- Main (The Orb & Cam) --- */
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        /* 카메라 컨테이너 */
-        #webcam-container {
-            position: absolute;
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            overflow: hidden;
-            opacity: 0; /* 기본 숨김 */
-            transform: scale(0.8);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 2px solid rgba(255,255,255,0.1);
-            z-index: 10;
-        }
-
-        #webcam-container.visible {
-            opacity: 1;
-            transform: scale(1);
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-
-        #webcam-container canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* The Orb Visualizer */
-        .orb {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            background: #333;
-            transition: all 0.8s ease;
-            box-shadow: 0 0 50px rgba(255,255,255,0.05);
-            z-index: 5;
-            position: absolute; /* 카메라 뒤/앞 위치 조정용 */
-        }
-
-        /* Stand State Animation */
-        .orb.state-stand {
-            background: var(--stand-color);
-            box-shadow: 0 0 60px var(--stand-color);
-            animation: float 3s ease-in-out infinite;
-        }
-
-        /* Sit State Animation */
-        .orb.state-sit {
-            background: var(--sit-color);
-            box-shadow: 0 0 40px var(--sit-color);
-            border-radius: 40% 40% 60% 60%; /* 납작해짐 */
-            transform: scaleY(0.6) translateY(50px);
-        }
-
-        /* Warning State */
-        .orb.state-warning {
-            background: var(--warning-color) !important;
-            box-shadow: 0 0 80px var(--warning-color) !important;
-            animation: pulse-warning 0.5s infinite alternate !important;
-            border-radius: 50% !important;
-            transform: scale(1.2) !important;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.05); }
-        }
-
-        @keyframes pulse-warning {
-            from { opacity: 0.8; transform: scale(1.1); }
-            to { opacity: 1; transform: scale(1.2); }
-        }
-
-        /* Start Button overlay */
-        #start-btn {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            background: white;
-            color: black;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            z-index: 200;
-            font-weight: bold;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
-        }
-        #start-btn:hover { transform: scale(1.05); }
-
-
-        /* --- Footer (Stats & Balance Bar) --- */
-        .stats-container {
-            width: 80%;
-            max-width: 800px;
-            margin: 0 auto 50px auto;
-            font-family: 'Roboto Mono', monospace;
-        }
-
-        .balance-bar-wrapper {
-            display: flex;
-            height: 44px;
-            border-radius: 22px;
-            background: #222;
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .bar-segment {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            transition: width 0.3s linear, background-color 0.5s ease;
-            white-space: nowrap;
-            font-weight: 700;
-            font-size: 0.9rem;
-            overflow: hidden;
-        }
-
-        .stand-bar {
-            background-color: var(--stand-color);
-            color: #121212;
-            justify-content: flex-start;
-            width: 50%; /* 초기값 */
-            overflow: visible;
-            position: relative;
-            z-index: 20;
-        }
-
-        .stand-bar span {
-            white-space: nowrap;
-            text-shadow: 
-                -1px -1px 0 #fff,  
-                 1px -1px 0 #fff,
-                -1px  1px 0 #fff,
-                 1px  1px 0 #fff;
-        }
-
-        .sit-bar {
-            background-color: var(--sit-color);
-            color: #fff;
-            justify-content: flex-end;
-            width: 50%; /* 초기값 */
-            z-index: 15;
-            position: relative;
-        }
-
-        .sit-bar.warning {
-            background-color: var(--warning-color);
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
-        }
-
-        .sit-progress {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 0;
-            background-color: rgba(255, 75, 75, 0.4);
-            width: 0%;
-            transition: width 1s linear;
-            z-index: 1;
-        }
-
-        .sit-bar span {
-            position: relative;
-            z-index: 10;
-        }
-
-        .total-time {
-            text-align: center;
-            margin-top: 15px;
-            color: var(--text-sub);
-            font-size: 0.85rem;
-            letter-spacing: 2px;
-        }
-
-        .status-text {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            height: 1.5rem;
-            color: var(--text-main);
-        }
-
-        /* --- Modal (Intro/About) --- */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 300; 
-            left: 0;
-            top: 0;
-            width: 100%; 
-            height: 100%; 
-            overflow: auto; 
-            background-color: rgba(0,0,0,0.8); 
-            backdrop-filter: blur(5px);
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal.show {
-            display: flex;
-            opacity: 1;
-        }
-
-        .modal-content {
-            background-color: #1e1e1e;
-            margin: auto;
-            padding: 40px;
-            border: 1px solid #444;
-            width: 90%;
-            max-width: 600px;
-            border-radius: 20px;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
-            color: #eee;
-            position: relative;
-        }
-
-        .modal h2 {
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-            color: var(--stand-color);
-        }
-
-        .about-text {
-            line-height: 1.6;
-            font-size: 1rem;
-            margin-bottom: 30px;
-        }
-
-        .about-text strong {
-            color: white;
-        }
-        
-        .about-section {
-            margin-bottom: 15px;
-        }
-
-        .close-btn {
-            background: var(--text-main);
-            color: black;
-            border: none;
-            padding: 10px 30px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            float: right;
-            transition: transform 0.2s;
-        }
-        .close-btn:hover { transform: scale(1.05); }
-
-    </style>
+    <title>Time to Stand Up - 당신의 건강한 업무 파트너</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
     <header>
-        <div class="logo">Time to Stand up</div>
-        <div class="controls">
-            <div id="rec-indicator" class="rec-indicator">● REC</div>
-            <button id="about-btn" class="cam-toggle" onclick="toggleAbout()">ABOUT</button>
-            <button id="lang-toggle" class="cam-toggle" onclick="toggleLanguage()">EN</button>
-            <button id="pause-toggle" class="cam-toggle" onclick="togglePause()">PAUSE</button>
-            <button id="cam-toggle" class="cam-toggle" onclick="toggleCamera()">CAM OFF</button>
+        <div class="container">
+            <nav>
+                <div class="logo">Time 2 Stand Up</div>
+                <div class="nav-links">
+                    <a href="index.html" class="active">홈</a>
+                    <a href="blog/index.html">건강 블로그</a>
+                    <a href="monitor.html" class="btn-cta">시간 측정하기</a>
+                </div>
+            </nav>
         </div>
     </header>
 
     <main>
-        <button id="start-btn" onclick="init()">START TRACKING</button>
-        
-        <div id="orb" class="orb"></div>
-        
-        <div id="webcam-container"><canvas id="canvas"></canvas></div>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <h1>앉아만 있는 당신,<br>건강은 안녕하신가요?</h1>
+                <p>
+                    하루 8시간 이상의 좌식 생활은 흡연만큼이나 위험할 수 있습니다.<br>
+                    AI 기반 실시간 자세 모니터링으로 건강한 업무 습관을 시작하세요.
+                </p>
+                <a href="monitor.html" class="btn-cta" style="font-size: 1.2rem; padding: 15px 40px;">지금 무료로 시작하기</a>
+                <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">* 별도의 설치 없이 브라우저에서 바로 실행됩니다.</p>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <div class="container">
+                <h2 class="section-title">주요 기능</h2>
+                <div class="grid-3">
+                    <div class="card">
+                        <h3>🤖 AI 실시간 감지</h3>
+                        <p>웹캠을 통해 당신이 앉아있는지 서있는지 실시간으로 분석합니다. 영상은 서버로 전송되지 않고 로컬에서 안전하게 처리됩니다.</p>
+                    </div>
+                    <div class="card">
+                        <h3>⚖️ 습관 밸런스 게임</h3>
+                        <p>앉은 시간과 선 시간의 비율을 시각화하여, 게임하듯 즐겁게 서있는 시간을 늘릴 수 있도록 동기를 부여합니다.</p>
+                    </div>
+                    <div class="card">
+                        <h3>🚨 30분 건강 알림</h3>
+                        <p>30분 이상 연속으로 앉아있을 경우 경고 알림을 보냅니다. 허리 건강과 혈액 순환을 위해 잠시 일어날 시간을 알려드립니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Blog Preview Section -->
+        <section class="blog-preview">
+            <div class="container">
+                <h2 class="section-title">건강한 업무 습관 가이드</h2>
+                <div class="grid-3">
+                    <article class="card">
+                        <h3>🪑 의자병(Sitting Disease)의 위험성</h3>
+                        <p>장시간 좌식 생활이 심혈관 질환과 대사 증후군에 미치는 영향에 대해 알아봅니다.</p>
+                        <a href="blog/health-risks.html">자세히 보기 →</a>
+                    </article>
+                    <article class="card">
+                        <h3>⚡ 생산성을 높이는 스탠딩 워크</h3>
+                        <p>서서 일하는 것이 집중력과 창의력에 어떤 도움을 주는지, 올바른 스탠딩 데스크 활용법을 소개합니다.</p>
+                        <a href="blog/standing-benefits.html">자세히 보기 →</a>
+                    </article>
+                    <article class="card">
+                        <h3>🔒 내 프라이버시는 안전한가요?</h3>
+                        <p>Time to Stand Up이 어떻게 사용자의 영상을 서버 전송 없이 안전하게 처리하는지 기술적 원리를 설명합니다.</p>
+                        <a href="privacy.html">자세히 보기 →</a>
+                    </article>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <div class="stats-container">
-        <div id="status-text" class="status-text">Ready</div>
-        
-        <div style="position: relative;">
-            <div class="balance-bar-wrapper">
-                <div id="stand-bar" class="bar-segment stand-bar">
-                    <span id="stand-label">STAND 00:00</span>
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo" style="margin-bottom: 20px;">Time 2 Stand Up</div>
+                    <p style="color: #666; max-width: 300px;">
+                        건강한 디지털 라이프스타일을 위한<br>
+                        AI 파트너입니다.
+                    </p>
                 </div>
-                
-                <div id="sit-bar" class="bar-segment sit-bar">
-                    <div id="sit-progress" class="sit-progress"></div>
-                    <span id="sit-label">SIT 00:00 (00:00)</span>
+                <div class="footer-links">
+                    <strong>바로가기</strong>
+                    <a href="index.html">홈</a>
+                    <a href="monitor.html">앱 실행</a>
+                    <a href="blog/index.html">블로그</a>
+                </div>
+                <div class="footer-links">
+                    <strong>지원 및 정책</strong>
+                    <a href="privacy.html">개인정보처리방침</a>
+                    <a href="#">이용약관</a>
+                    <a href="#">문의하기</a>
                 </div>
             </div>
-        </div>
-
-        <div class="total-time">
-            <span id="total-label">TOTAL TIME</span> <span id="total-timer">00:00:00</span>
-        </div>
-    </div>
-
-    <!-- About Modal -->
-    <div id="about-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="about-title">About Time to Standup</h2>
-            <div id="about-body" class="about-text">
-                <!-- Content will be injected by JS -->
+            <div class="copyright">
+                &copy; 2026 Time to Stand Up. All rights reserved.
             </div>
-            <button id="modal-close-btn" class="close-btn" onclick="toggleAbout()">CLOSE</button>
         </div>
-    </div>
+    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
-
-    <script type="text/javascript">
-        // --- Internationalization (i18n) ---
-        const translations = {
-            en: {
-                title: "Time to Stand up",
-                camOn: "CAM ON",
-                camOff: "CAM OFF",
-                pause: "PAUSE",
-                resume: "RESUME",
-                rec: "● REC",
-                recPaused: "|| PAUSED",
-                start: "START TRACKING",
-                ready: "Ready",
-                loading: "Loading Model...",
-                standing: "Standing...",
-                sitting: "SITTING...",
-                move: "MOVE YOUR BODY!",
-                noPose: "No Pose Detected",
-                standLabel: "STAND",
-                sitLabel: "SIT",
-                totalLabel: "TOTAL TIME",
-                aboutBtn: "ABOUT",
-                aboutTitle: "About Time2Standup",
-                closeBtn: "CLOSE",
-                aboutContent: `
-                    <div class="about-section">
-                        <strong>The Tug of War</strong><br>
-                        Visualize your posture as a game where Good Habits (Standing/Mint) push out Bad Habits (Sitting/Lavender).
-                    </div>
-                    <div class="about-section">
-                        <strong>The Orb & Balance</strong><br>
-                        The floating Orb reflects your current state. The bottom bar shows the balance of your time.
-                    </div>
-                    <div class="about-section">
-                        <strong>Warning System</strong><br>
-                        If you sit continuously for more than 30 minutes, the screen will turn red to warn you. Stand up to reset it!
-                    </div>
-                    <div class="about-section" style="font-size: 0.8rem; color: #888;">
-                        * All camera processing is done locally on your device for privacy.
-                    </div>
-                `
-            },
-            ko: {
-                title: "Time to Stand up",
-                camOn: "카메라 켜기",
-                camOff: "카메라 끄기",
-                pause: "일시정지",
-                resume: "다시 시작",
-                rec: "● 녹화 중",
-                recPaused: "|| 일시정지",
-                start: "측정 시작",
-                ready: "준비 완료",
-                loading: "모델 로딩 중...",
-                standing: "서있는 중...",
-                sitting: "앉아있는 중...",
-                move: "몸을 움직이세요!",
-                noPose: "자세 감지 안됨",
-                standLabel: "서기",
-                sitLabel: "앉기",
-                totalLabel: "총 시간",
-                aboutBtn: "소개",
-                aboutTitle: "Time to Standup 소개",
-                closeBtn: "닫기",
-                aboutContent: `
-                    <div class="about-section">
-                        <strong>줄다리기 형식 바</strong><br>
-                        여러분의 자세 데이터를 게임처럼 시각화합니다. 좋은 습관(서기/민트색)으로 나쁜 습관(앉기/라벤더색)을 밀어내세요!
-                    </div>
-                    <div class="about-section">
-                        <strong>오브(Orb)와 밸런스</strong><br>
-                        화면 중앙의 오브는 현재 상태를 보여줍니다. 하단의 바는 전체 시간의 균형을 나타냅니다.
-                    </div>
-                    <div class="about-section">
-                        <strong>경고 시스템</strong><br>
-                        30분 이상 연속으로 앉아있으면 화면이 붉게 변하며 경고합니다. 일어나서 스트레칭을 하세요!
-                    </div>
-                    <div class="about-section" style="font-size: 0.8rem; color: #888;">
-                        * 모든 카메라 처리는 기기 내부에서 안전하게 이루어집니다.
-                    </div>
-                `
-            }
-        };
-
-        let currentLang = 'ko'; // Default to Korean as requested
-
-        // 모델 URL (Teachable Machine에서 발급받은 URL)
-        const URL = "https://teachablemachine.withgoogle.com/models/cqXV5MEON/";
-
-        let model, webcam, ctx, maxPredictions;
-        let isRunning = false;
-        let isCamVisible = false;
-        let isPaused = false;
-        let isModalOpen = false;
-
-        // 시간 추적 변수 (밀리초 단위)
-        let totalTimeMs = 0;
-        let standTimeMs = 0;
-        let sitTimeMs = 0;
-        let continuousSitTimeMs = 0; // 연속 앉은 시간
-        let lastFrameTime = 0;
-        let lastState = "neutral"; // 상태 추적용
-        
-        const WARNING_THRESHOLD_MS = 30 * 60 * 1000; // 30분
-
-        // DOM 요소
-        const orb = document.getElementById('orb');
-        const standBar = document.getElementById('stand-bar');
-        const sitBar = document.getElementById('sit-bar');
-        const standLabel = document.getElementById('stand-label');
-        const sitLabel = document.getElementById('sit-label');
-        const sitProgress = document.getElementById('sit-progress');
-        const totalTimer = document.getElementById('total-timer');
-        const totalLabel = document.getElementById('total-label');
-        const statusText = document.getElementById('status-text');
-        const webcamContainer = document.getElementById('webcam-container');
-        const startBtn = document.getElementById('start-btn');
-        const recIndicator = document.getElementById('rec-indicator');
-        const pauseBtn = document.getElementById('pause-toggle');
-        const camBtn = document.getElementById('cam-toggle');
-        const aboutBtn = document.getElementById('about-btn');
-        const langBtn = document.getElementById('lang-toggle');
-        const aboutModal = document.getElementById('about-modal');
-        const aboutTitle = document.getElementById('about-title');
-        const aboutBody = document.getElementById('about-body');
-        const modalCloseBtn = document.getElementById('modal-close-btn');
-
-        // 초기 언어 설정
-        setLanguage(currentLang);
-
-        async function init() {
-            startBtn.style.display = 'none'; // 버튼 숨김
-            statusText.innerText = translations[currentLang].loading;
-
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            // 모델 로드
-            model = await tmPose.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            // 웹캠 설정
-            const size = 200;
-            const flip = true; 
-            webcam = new tmPose.Webcam(size, size, flip);
-            await webcam.setup();
-            await webcam.play();
-            
-            // 캔버스 설정
-            const canvas = document.getElementById("canvas");
-            canvas.width = size; canvas.height = size;
-            ctx = canvas.getContext("2d");
-
-            // 루프 시작 준비
-            isRunning = true;
-            recIndicator.style.display = 'block';
-            lastFrameTime = performance.now();
-            window.requestAnimationFrame(loop);
-        }
-
-        async function loop(timestamp) {
-            webcam.update();
-            
-            // 시간 차이(Delta Time) 계산
-            const dt = timestamp - lastFrameTime;
-            lastFrameTime = timestamp;
-
-            if (isRunning) {
-                await predict(dt);
-            }
-            
-            window.requestAnimationFrame(loop);
-        }
-
-        async function predict(dt) {
-            // 1. 포즈 추정 및 예측 (항상 실행 - 일시정지여도 카메라 화면은 갱신)
-            const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-            
-            // 5. 웹캠 그리기 (필요시에만)
-            if (isCamVisible) {
-                drawPose(pose);
-            }
-
-            // 일시정지 상태면 시간 측정 및 상태 업데이트 중단
-            if (isPaused) {
-                statusText.innerText = translations[currentLang].recPaused;
-                statusText.style.color = "#f1c40f"; // Yellow
-                return; 
-            }
-
-            const prediction = await model.predict(posenetOutput);
-
-            // 2. 가장 높은 확률의 클래스 찾기
-            let highestProb = 0;
-            let currentClass = "neutral";
-
-            for (let i = 0; i < maxPredictions; i++) {
-                if (prediction[i].probability > highestProb) {
-                    highestProb = prediction[i].probability;
-                    currentClass = prediction[i].className;
-                }
-            }
-
-            // 3. 시간 누적 및 상태 업데이트
-            const classNameLower = currentClass.toLowerCase();
-
-            if (classNameLower.includes("stand")) {
-                standTimeMs += dt;
-                continuousSitTimeMs = 0; // 서있으면 앉은 시간 초기화
-                updateOrb("stand");
-                lastState = "stand";
-            } else if (classNameLower.includes("sit")) {
-                sitTimeMs += dt;
-                continuousSitTimeMs += dt; // 앉은 시간 누적
-                updateOrb("sit");
-                lastState = "sit";
-            } else {
-                // 인식 안됨 혹은 기타
-                continuousSitTimeMs = 0;
-                updateOrb("neutral");
-                lastState = "neutral";
-            }
-
-            totalTimeMs += dt;
-
-            // 4. UI 렌더링 (바, 타이머)
-            updateUI();
-        }
-
-        function updateUI() {
-            const T = translations[currentLang];
-
-            // 1. Status Text Update
-            // 경고 상태인지 먼저 확인
-            const isWarning = continuousSitTimeMs >= WARNING_THRESHOLD_MS;
-
-            if (isWarning) {
-                statusText.innerText = T.move;
-                statusText.style.color = "var(--warning-color)";
-                sitBar.classList.add('warning');
-                document.body.classList.add('warning-mode');
-                orb.className = "orb state-warning"; 
-            } else {
-                sitBar.classList.remove('warning');
-                document.body.classList.remove('warning-mode');
-                // 상태별 텍스트
-                if (lastState === "stand") {
-                    statusText.innerText = T.standing;
-                    statusText.style.color = "var(--stand-color)";
-                } else if (lastState === "sit") {
-                    statusText.innerText = T.sitting;
-                    statusText.style.color = "var(--sit-color)";
-                } else {
-                    statusText.innerText = T.noPose;
-                    statusText.style.color = "#888";
-                }
-            }
-
-            // 2. Bars & Timer
-            standLabel.innerText = `${T.standLabel} ${formatTime(standTimeMs)}`;
-            sitLabel.innerText = `${T.sitLabel} ${formatTime(sitTimeMs)} (${formatTime(continuousSitTimeMs)})`;
-            totalTimer.innerText = formatTime(totalTimeMs);
-            totalLabel.innerText = T.totalLabel;
-
-            // 바 너비 계산
-            const safeTotal = totalTimeMs > 0 ? totalTimeMs : 1; 
-            const standPercent = (standTimeMs / safeTotal) * 100;
-            const sitPercent = (sitTimeMs / safeTotal) * 100;
-
-            let visualStand = standPercent;
-            let visualSit = sitPercent;
-
-            if (totalTimeMs < 1000) {
-                visualStand = 50;
-                visualSit = 50;
-            }
-
-            standBar.style.width = `${visualStand}%`;
-            sitBar.style.width = `${visualSit}%`;
-
-            const continuousPercent = Math.min((continuousSitTimeMs / WARNING_THRESHOLD_MS) * 100, 100);
-            sitProgress.style.width = `${continuousPercent}%`;
-        }
-
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'ko' : 'en';
-            setLanguage(currentLang);
-        }
-
-        function setLanguage(lang) {
-            const T = translations[lang];
-            
-            // Static elements
-            document.title = T.title;
-            aboutBtn.innerText = T.aboutBtn;
-            langBtn.innerText = lang.toUpperCase();
-            
-            // Logic-dependent buttons
-            if (isPaused) {
-                pauseBtn.innerText = T.resume;
-                recIndicator.innerText = T.recPaused;
-            } else {
-                pauseBtn.innerText = T.pause;
-                recIndicator.innerText = T.rec;
-            }
-
-            if (isCamVisible) {
-                camBtn.innerText = T.camOn;
-            } else {
-                camBtn.innerText = T.camOff;
-            }
-
-            startBtn.innerText = T.start;
-            
-            // Modal
-            aboutTitle.innerText = T.aboutTitle;
-            aboutBody.innerHTML = T.aboutContent;
-            modalCloseBtn.innerText = T.closeBtn;
-
-            // Update UI if running to refresh status text immediately
-            if (!isRunning) {
-                statusText.innerText = T.ready;
-            } else {
-                updateUI();
-            }
-        }
-
-        function togglePause() {
-            if (!isRunning) return;
-
-            isPaused = !isPaused;
-            const T = translations[currentLang];
-            
-            if (isPaused) {
-                pauseBtn.innerText = T.resume;
-                pauseBtn.classList.add('paused');
-                recIndicator.innerText = T.recPaused;
-                recIndicator.style.animation = "none";
-                recIndicator.style.color = "#888";
-            } else {
-                pauseBtn.innerText = T.pause;
-                pauseBtn.classList.remove('paused');
-                recIndicator.innerText = T.rec;
-                recIndicator.style.animation = "blink 1s infinite";
-                recIndicator.style.color = "var(--warning-color)";
-            }
-        }
-
-        function updateOrb(state) {
-            if (document.body.classList.contains('warning-mode')) return;
-
-            orb.className = "orb"; // 초기화
-            if (state === "stand") orb.classList.add("state-stand");
-            if (state === "sit") orb.classList.add("state-sit");
-        }
-
-        function toggleCamera() {
-            isCamVisible = !isCamVisible;
-            const btn = document.getElementById('cam-toggle');
-            const T = translations[currentLang];
-            
-            if (isCamVisible) {
-                webcamContainer.classList.add('visible');
-                btn.classList.add('active');
-                btn.innerText = T.camOn;
-            } else {
-                webcamContainer.classList.remove('visible');
-                btn.classList.remove('active');
-                btn.innerText = T.camOff;
-            }
-        }
-        
-        function toggleAbout() {
-            const modal = document.getElementById('about-modal');
-            isModalOpen = !isModalOpen;
-            if (isModalOpen) {
-                modal.classList.add('show');
-            } else {
-                modal.classList.remove('show');
-            }
-        }
-
-        function drawPose(pose) {
-            if (webcam.canvas) {
-                ctx.drawImage(webcam.canvas, 0, 0);
-                if (pose) {
-                    const minPartConfidence = 0.5;
-                    tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-                    tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-                }
-            }
-        }
-
-        // 밀리초 -> HH:MM:SS 포맷팅
-        function formatTime(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const h = Math.floor(totalSeconds / 3600);
-            const m = Math.floor((totalSeconds % 3600) / 60);
-            const s = totalSeconds % 60;
-            
-            const pad = (n) => n.toString().padStart(2, '0');
-            if (h > 0) {
-                return `${pad(h)}:${pad(m)}:${pad(s)}`;
-            } else {
-                return `${pad(m)}:${pad(s)}`;
-            }
-        }
-    </script>
 </body>
 </html>
